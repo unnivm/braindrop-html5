@@ -1,0 +1,311 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Braindrops</title>
+<body>
+<script src="pixi.min.js"></script>
+<script src="buffer-loader.js"></script>
+<script src="menu.js"></script>
+<script src="Universe.js"></script>
+<script src="rainy.js"></script>
+<script src="word.js"></script>
+<script src="bigdrop.js"></script>
+<script src="gamemanager.js"></script>
+<script src="abc.js"></script>
+
+<script>
+
+var brainDrops = {};
+
+var gameframe = document.getElementById("content");
+
+////// hides the mouse 
+document.body.style.cursor = 'none';
+
+///// handle mouse move event
+document.onmousemove = handleMouseMove;
+
+var audtioCtx, bufferLoader, cursor, cursorTexture,levelTexture, level, mousex, mousey, count = 0, index = 1, audiocnt = 0, imgcnt = 0;
+
+var audioList;
+
+var totfiles = 10,totcount = 0;
+
+var div = 100/totfiles;
+
+var rem = 100 % totfiles;
+  
+var resloaded = false;
+
+var msg = "";
+
+var isMenu = false;
+
+var renderer = PIXI.autoDetectRenderer(window.innerWidth-25, window.innerHeight - 20, {antialiasing: true, transparent: false, resolution: 1});
+
+var startGame = false;
+
+//setCurrentResolution();
+
+//Add the canvas to the HTML document
+ document.body.appendChild(renderer.view);
+
+////// graphics instance
+var graphics = new PIXI.Graphics();
+
+var graphics1 = new PIXI.Graphics();
+
+////// text object
+var text = new PIXI.Text(msg, {font:"50px Arial", fill:"blue"});
+
+var text1 = new PIXI.Text(msg, {font:"50px Arial", fill:"blue"});
+
+//Create a container object
+//var stage = new PIXI.DisplayObjectContainer(true);
+var stage = new PIXI.Stage;
+
+//var healthBar = new PIXI.DisplayObjectContainer();
+//healthBar.position.set(stage.width - 170, 6)
+//healthBar.addChild( graphics1);
+
+//stage.addChild(healthBar);
+
+//var batch = new PIXI.SpriteBatch();
+//stage.addChild(batch);
+
+///// load images
+loadImage();
+
+///// load audio
+loadAudio();
+
+
+var container = new PIXI.DisplayObjectContainer();
+	container = new PIXI.ParticleContainer(200000, [false, true, false, false, false]);
+	stage.addChild(container);
+	
+
+////// menu system //////
+var menu = new Menu(text1, stage,onMenuClicked);
+menu.init();
+
+stage.addChild(text1);
+stage.addChild(text);
+stage.addChild(graphics);
+
+///// initializing rainy ///////
+var rainy = new Rainy(stage, renderer, playGameSound);
+
+gameLoop();
+
+/*
+* It will set the current resoultion of the screen and will take its width and height
+*/
+function setCurrentResolution() {
+renderer.view.style.position = "absolute"
+renderer.view.style.display = "block";
+renderer.autoResize = true;
+renderer.resize(window.innerWidth, window.innerHeight);
+}
+
+function loadImage() {
+  PIXI.loader.add("bucket.png").add("level"+index+".jpg").add("hhi-logo.png").add("rain.png").on("progress", loadProgressHandler).load(setup);
+}
+
+function handleMouseMove( event ) {
+	event = event || window.event;
+	mousex = event.clientX;
+	mousey = event.clientY;
+}
+
+
+function setup() {
+  console.log(" all images have been loaded..");	
+}
+
+function loadSprites() {
+   level = new PIXI.Sprite.fromImage("level1.jpg");	
+   level.width  = window.innerWidth - 25;
+   level.height = window.innerHeight;
+
+   stage.addChild(level);
+
+   isMenu = true; 
+   menu.enable();
+
+   cursor = new PIXI.Sprite.fromImage("bucket.png");
+   stage.addChild(cursor);
+
+   stage.addChild( graphics1);
+   
+   
+   renderer.render(stage); 
+}
+
+function loadProgressHandler(loader, resource) {
+	console.log(".....loading..... " + resource.url);
+	console.log("progress: " + loader.progress + "%"); 
+	++totcount;
+}
+
+function gameLoop() {
+	requestAnimationFrame(gameLoop);
+
+    if(!isMenu && startGame ) {
+    	rainy.update(mousex, mousey, cursor.width, cursor.height);
+    }
+    
+    if(!isMenu && !startGame) {
+    	displayTotalProgress();
+ 	}
+
+  if( resloaded ) {
+	if( cursor ) {
+	  cursor.x = mousex;
+  	  cursor.y = mousey;
+	}	
+	
+  } else {
+	text.x = window.innerWidth/2 - 5;
+	text.y = window.innerHeight/2 - 100;
+   } 
+
+   if(isMenu && !startGame ) {
+   	   
+      menu.displayMenu();
+      menu.selectMenuItem(mousex, mousey);
+   }
+
+  //Render the stage
+  renderer.render(stage);
+}
+
+function loadAudio() {
+
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
+
+  audioCtx = new AudioContext();
+
+  bufferLoader = new BufferLoader(
+    audioCtx,
+    [
+      'CosmicBliss.ogg',
+      'Quest.ogg',
+      'WiseMoment.ogg',
+      'EuphoricDay.ogg',  	
+      'drop.wav',	
+      'negative.wav',	
+    ],
+
+    finishedLoading,
+    onAudioLoaded
+ 
+    );
+
+  bufferLoader.load();
+}
+
+function onAudioLoaded(url, bufferList) {
+  ++totcount;
+  console.log(  url + " loaded.." + bufferList); 
+}
+
+function finishedLoading(bufferList) {
+  console.log(" all audio files loaded  " + bufferList);
+  audioList = bufferList;
+}
+
+
+function playSound(buffer, time) {
+  var source    = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start(time);
+}
+
+function displayTotalProgress() {
+		var t = Math.round(totcount*div);
+		var startx = 270;
+		RoundRect1(window.innerWidth/2 - startx, window.innerHeight/2 - 40, totfiles * 60,50);
+        graphics.beginFill(0x0066FF);
+		RoundRect1(window.innerWidth/2 - startx-5, window.innerHeight/2 - 40, totcount * 60, 50);
+		graphics.endFill();
+		text.text = t +"%";
+
+
+        if(!resloaded) { 
+			if( t === 100 )  {
+				resloaded = true;
+				setTimeout(loadSprites, 10);
+			} 
+	    }
+	    
+}
+
+function RoundedRect(x, y, width, height, radius, fill, stroke) {
+
+  if (typeof stroke == "undefined" ) {
+      stroke = true;
+  }
+
+  if (typeof radius === "undefined") {
+     radius = 5;
+  }
+
+  graphics.lineStyle(10, 0x0066FF, 1);
+  graphics.moveTo(x + radius, y);
+  graphics.lineTo(x + width - radius, y);
+  graphics.quadraticCurveTo(x + width, y, x + width, y + radius);
+  graphics.lineTo(x + width, y + height - radius);
+  graphics.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  graphics.lineTo(x + radius, y + height);
+  graphics.quadraticCurveTo(x, y + height, x, y + height - radius);
+  graphics.lineTo(x, y + radius);
+  graphics.quadraticCurveTo(x, y, x + radius, y);
+}
+
+function RoundRect1(x, y, w, h, radius) {
+
+  if (typeof radius === "undefined") {
+     radius = 5;
+  }
+
+  var r = x + w;
+  var b = y + h;
+  graphics.lineStyle(10, 0x0066FF, 1);	
+  graphics.moveTo(x+radius, y);
+  graphics.lineTo(r-radius, y);
+  graphics.quadraticCurveTo(r, y, r, y+radius);
+  graphics.lineTo(r, y+h-radius);
+  graphics.quadraticCurveTo(r, b, r-radius, b);
+  graphics.lineTo(x+radius, b);
+  graphics.quadraticCurveTo(x, b, x, b-radius);
+  graphics.lineTo(x, y+radius);
+  graphics.quadraticCurveTo(x, y, x+radius, y);
+}
+
+function drawRect() {
+	graphics.lineStyle(20, 0x33FF00);
+	graphics.drawRect(50, 250, 100, 100);
+}
+
+function onMenuClicked(str) {
+  if("START GAME" === str) {
+   	  isMenu = false;
+      startGame = true;
+  	  menu.disable();
+  //	  renderer.render(stage);
+  	  rainy.init();
+  }
+}
+
+ function playGameSound(n) {
+  	  if( n === 1) {
+  	  	  playSound(audioList[0], 1);
+  	  } else if( n === 2) {
+  	  	  playSound(audioList[1], 1);
+  	  }
+ }
+
+
+</script>
+</body>
